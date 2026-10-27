@@ -36,6 +36,45 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
     });
 };
 
+// @desc    Register a new user
+// @route   POST /api/auth/register
+// @access  Public
+exports.register = async (req, res) => {
+  try {
+    const { name, email, password, role, department, phone } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide name, email, and password.',
+      });
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'A user with this email already exists.',
+      });
+    }
+
+    const user = await User.create({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      password,
+      role: role || 'staff',
+      department: department ? department.trim() : 'General',
+      phone: phone ? phone.trim() : '',
+    });
+
+    await logAudit('USER_REGISTERED', req, `User registered: ${user.email} (${user.role})`);
+    sendTokenResponse(user, 201, res, 'User registered successfully.');
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ success: false, message: 'Server error during registration.' });
+  }
+};
+
 // @desc    Login user
 // @route   POST /api/auth/login
 // @access  Public
